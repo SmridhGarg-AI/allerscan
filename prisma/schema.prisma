@@ -1,0 +1,415 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CUSTOMER
+  ADMINISTRATOR
+  MODERATOR
+}
+
+enum RiskStatus {
+  SAFE
+  CAUTION
+  HIGH_RISK
+  UNSAFE
+}
+
+model User {
+  id                  String       @id @default(uuid())
+  fullName            String
+  username            String?      @unique
+  email               String       @unique
+  passwordHash        String?
+  avatar              String?
+  emailVerified       Boolean      @default(false)
+  role                Role         @default(CUSTOMER)
+  status              String       @default("ACTIVE")
+  onboardingCompleted Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  deletedAt           DateTime?
+
+  sessions            Session[]
+  accounts            Account[]
+  profile             UserProfile?
+  allergies           UserAllergy[]
+  medicalConditions   UserMedicalCondition[]
+  dietPreferences     UserDietPreference[]
+  notificationSettings UserNotificationSetting?
+  privacySettings     UserPrivacySetting?
+  scanHistories       ScanHistory[]
+  ocrScans            OCRScan[]
+  aiAnalyses          AIAnalysis[]
+  visionScans         VisionScan[]
+  conversations       Conversation[]
+  notifications       Notification[]
+  emergencyProfile    EmergencyProfile?
+  emergencyContacts   EmergencyContact[]
+  productReports      ProductReport[]
+  feedbacks           CommunityFeedback[]
+  auditLogs           AuditLog[]
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model UserProfile {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  age               Int?
+  dateOfBirth       String?
+  gender            String?
+  country           String?  @default("United States")
+  preferredLanguage String?  @default("English")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model UserAllergy {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allergenName String
+  severity     String   @default("HIGH")
+  notes        String?
+  createdAt    DateTime @default(now())
+}
+
+model UserMedicalCondition {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conditionName String
+  notes         String?
+  createdAt     DateTime @default(now())
+}
+
+model UserDietPreference {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferenceName String
+  createdAt      DateTime @default(now())
+}
+
+model UserNotificationSetting {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushEnabled   Boolean  @default(true)
+  emailEnabled  Boolean  @default(true)
+  safetyAlerts  Boolean  @default(true)
+  recallAlerts  Boolean  @default(true)
+  weeklyReports Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model UserPrivacySetting {
+  id                      String   @id @default(uuid())
+  userId                  String   @unique
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shareAnonymousAnalytics Boolean  @default(true)
+  improveAi               Boolean  @default(true)
+  marketingEmails         Boolean  @default(false)
+  publicProfile           Boolean  @default(false)
+  createdAt               DateTime @default(now())
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  icon        String?
+  description String?
+  parentId    String?
+  createdAt   DateTime  @default(now())
+
+  products    Product[]
+}
+
+model Brand {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  logo        String?
+  country     String?
+  description String?
+  website     String?
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now())
+
+  products    Product[]
+}
+
+model Product {
+  id                 String      @id @default(uuid())
+  name               String
+  brandId            String?
+  brand              Brand?      @relation(fields: [brandId], references: [id])
+  barcode            String      @unique
+  image              String?
+  gallery            String?     // JSON string of image URLs
+  description        String?
+  ingredients        String
+  allergens          String?     // Comma separated allergen tags
+  servingSize        String?
+  weight             String?
+  country            String?
+  manufacturer       String?
+  categoryId         String?
+  category           Category?   @relation(fields: [categoryId], references: [id])
+  subcategory        String?
+  certifications     String?     // JSON/CSV string
+  dietaryLabels      String?     // JSON/CSV string
+  aiSafetyStatus     RiskStatus? @default(SAFE)
+  aiConfidenceScore  Float?      @default(0.95)
+  isApproved         Boolean     @default(true)
+  status             String      @default("ACTIVE")
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  deletedAt          DateTime?
+
+  nutrition          Nutrition?
+  scanHistories      ScanHistory[]
+  aiAnalyses         AIAnalysis[]
+  productReports     ProductReport[]
+}
+
+model Nutrition {
+  id                String   @id @default(uuid())
+  productId         String   @unique
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  calories          Float    @default(0)
+  protein           Float    @default(0)
+  carbohydrates     Float    @default(0)
+  sugar             Float    @default(0)
+  fiber             Float    @default(0)
+  fat               Float    @default(0)
+  saturatedFat      Float    @default(0)
+  transFat          Float    @default(0)
+  sodium            Float    @default(0)
+  potassium         Float    @default(0)
+  iron              Float    @default(0)
+  calcium           Float    @default(0)
+  vitaminA          Float    @default(0)
+  vitaminC          Float    @default(0)
+  vitaminD          Float    @default(0)
+  servingSize       String   @default("100g")
+  dailyValuePercent Float    @default(0)
+}
+
+model Ingredient {
+  id                 String   @id @default(uuid())
+  name               String   @unique
+  scientificName     String?
+  alternativeNames   String?
+  description        String?
+  category           String?
+  possibleAllergens  String?
+  dietCompatibility  String?
+  createdAt          DateTime @default(now())
+}
+
+model Allergen {
+  id                      String   @id @default(uuid())
+  name                    String   @unique
+  severity                String   @default("HIGH")
+  description             String?
+  alternativeNames        String?
+  crossContaminationNotes String?
+  createdAt               DateTime @default(now())
+}
+
+model ScanHistory {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId    String?
+  product      Product?   @relation(fields: [productId], references: [id])
+  barcode      String
+  resultType   String     @default("BARCODE")
+  safetyStatus RiskStatus @default(SAFE)
+  createdAt    DateTime   @default(now())
+}
+
+model OCRScan {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageUrl        String
+  rawText         String
+  cleanedText     String
+  confidenceScore Float    @default(0.90)
+  language        String   @default("English")
+  createdAt       DateTime @default(now())
+}
+
+model AIAnalysis {
+  id                  String     @id @default(uuid())
+  userId              String
+  user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId           String?
+  product             Product?   @relation(fields: [productId], references: [id])
+  scanSource          String     @default("BARCODE")
+  riskScore           Float      @default(0)
+  safetyStatus        RiskStatus @default(SAFE)
+  confidenceScore     Float      @default(0.95)
+  explanation         String
+  detectedAllergens   String     // JSON array string
+  crossContamination  String?    // JSON array string
+  dietCompatibility   String?    // JSON object string
+  createdAt           DateTime   @default(now())
+}
+
+model VisionScan {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageUrl             String
+  detectedFoods        String   // JSON string
+  estimatedIngredients String   // JSON string
+  nutritionEstimate    String   // JSON string
+  confidenceScore      Float    @default(0.88)
+  createdAt            DateTime @default(now())
+}
+
+model Conversation {
+  id        String                @id @default(uuid())
+  userId    String
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String                @default("Health Chat")
+  isPinned  Boolean               @default(false)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  messages  ConversationMessage[]
+}
+
+model ConversationMessage {
+  id               String       @id @default(uuid())
+  conversationId   String
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender           String       // "USER" or "ASSISTANT"
+  text             String
+  relatedProductId String?
+  createdAt        DateTime     @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO")
+  category  String   @default("SAFETY")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model EmergencyProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bloodGroup     String?  @default("O+")
+  emergencyNotes String?
+  doctorName     String?
+  doctorPhone    String?
+  hospital       String?
+  autoInjectors  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model EmergencyContact {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  relationship String
+  phone        String
+  isPrimary    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model ProductReport {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  reportType  String
+  description String
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+}
+
+model CommunityFeedback {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedbackType String
+  subject      String
+  message      String
+  status       String   @default("OPEN")
+  createdAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  target    String?
+  metadata  String?  // JSON string
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model FeatureFlag {
+  id                String   @id @default(uuid())
+  name              String   @unique
+  enabled           Boolean  @default(true)
+  description       String?
+  percentageRollout Int      @default(100)
+  createdAt         DateTime @default(now())
+}
