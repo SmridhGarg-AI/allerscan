@@ -1,5 +1,7 @@
 import React from "react";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/layout/Navbar";

@@ -1,5 +1,7 @@
 import React from "react";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/auth";
