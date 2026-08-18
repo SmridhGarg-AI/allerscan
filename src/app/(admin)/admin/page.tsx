@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/layout/Navbar";
@@ -18,6 +17,7 @@ import {
   Activity,
   Plus,
   ShieldAlert,
+  Lock,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -27,7 +27,34 @@ export default async function AdminDashboardPage() {
   const user = await getCurrentUser();
 
   if (!user || user.role !== "ADMINISTRATOR") {
-    notFound();
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+        <Navbar user={user} />
+        <main className="flex-1 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full border-slate-800 bg-slate-900/90 p-6 text-center space-y-4 shadow-2xl">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 mx-auto">
+              <Lock className="h-7 w-7" />
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-xl font-extrabold text-white">Administrator Portal Access</h1>
+              <p className="text-xs text-slate-400">
+                You are currently logged in as <span className="text-brand-400 font-bold">{user?.email || "Guest"}</span> ({user?.role || "CUSTOMER"}). To access the Admin Dashboard, log in with administrator credentials.
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-950 p-3 border border-slate-800 text-left text-xs space-y-1">
+              <p className="font-bold text-amber-400">Admin Account Credentials:</p>
+              <p className="text-slate-300">Email: <code className="text-white">admin@allerscan.com</code></p>
+              <p className="text-slate-300">Password: <code className="text-white">AdminPassword123!</code></p>
+            </div>
+            <Link href="/login">
+              <Button variant="primary" className="w-full">
+                Sign In as Administrator
+              </Button>
+            </Link>
+          </Card>
+        </main>
+      </div>
+    );
   }
 
   const totalUsers = await prisma.user.count();

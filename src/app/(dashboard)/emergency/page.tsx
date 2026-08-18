@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ShieldAlert, Phone, AlertOctagon, QrCode, Heart, User, Hospital } from "lucide-react";
+import { EmergencyLocationCard } from "@/components/emergency/EmergencyLocationCard";
 
 export default async function EmergencyPage() {
   const user = await getCurrentUser();
@@ -67,10 +68,10 @@ export default async function EmergencyPage() {
             <div className="space-y-1">
               <h1 className="text-2xl font-extrabold text-rose-500 flex items-center gap-2">
                 <ShieldAlert className="h-7 w-7" />
-                <span>ICE Medical Emergency Card</span>
+                <span>ICE Medical Emergency & Hospital Finder</span>
               </h1>
               <p className="text-xs text-slate-400">
-                Instant medical identification & anaphylaxis action plan for first responders.
+                Live GPS location tracking, nearby emergency hospitals, & digital Medical ID card.
               </p>
             </div>
 
@@ -95,6 +96,9 @@ export default async function EmergencyPage() {
               3. Keep victim lying flat with feet elevated.
             </p>
           </Card>
+
+          {/* Real Live GPS Location & Nearby Emergency Hospitals */}
+          <EmergencyLocationCard />
 
           {/* Digital Medical ID Card */}
           <Card className="border-slate-800 bg-slate-900/90 p-6 space-y-6 shadow-2xl backdrop-blur-xl">
