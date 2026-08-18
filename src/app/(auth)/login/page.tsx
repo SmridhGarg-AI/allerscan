@@ -123,11 +123,10 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              {/* Demo Credentials Box */}
+              {/* Quick Login Info */}
               <div className="w-full rounded-xl bg-slate-800/50 p-3 text-[11px] text-slate-400 space-y-1 border border-slate-700/50">
-                <p className="font-bold text-slate-300">Quick Demo Credentials:</p>
-                <p>👤 Demo User: <code className="text-brand-300">demo@allerscan.com</code> / <code className="text-brand-300">DemoUser123!</code></p>
-                <p>🔑 Admin Portal: <code className="text-amber-300">admin@allerscan.com</code> / <code className="text-amber-300">AdminPassword123!</code></p>
+                <p className="font-bold text-slate-300">Default Login Account:</p>
+                <p>👤 Account: <code className="text-brand-300">demo@allerscan.com</code> / <code className="text-brand-300">DemoUser123!</code></p>
               </div>
             </CardFooter>
           </form>

@@ -21,21 +21,13 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
+import { notFound } from "next/navigation";
+
 export default async function AdminDashboardPage() {
   const user = await getCurrentUser();
 
   if (!user || user.role !== "ADMINISTRATOR") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4 text-center space-y-4">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-rose-500">Access Denied</h1>
-          <p className="text-xs text-slate-400">You must be logged in as an Administrator to view the Platform Control Portal.</p>
-          <Link href="/login">
-            <Button variant="primary">Login as Admin</Button>
-          </Link>
-        </div>
-      </div>
-    );
+    notFound();
   }
 
   const totalUsers = await prisma.user.count();

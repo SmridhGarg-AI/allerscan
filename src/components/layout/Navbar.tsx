@@ -80,16 +80,7 @@ export function Navbar({ user }: { user?: any }) {
                       <span>Profile & Allergies</span>
                     </Link>
 
-                    {user.role === "ADMINISTRATOR" && (
-                      <Link
-                        href="/admin"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40"
-                      >
-                        <Sparkles className="h-4 w-4 text-amber-500" />
-                        <span>Admin Dashboard</span>
-                      </Link>
-                    )}
+
 
                     <button
                       onClick={handleLogout}
