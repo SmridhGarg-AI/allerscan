@@ -96,6 +96,12 @@ async function main() {
   });
 
   // 4. Create Categories
+  const catFastFood = await prisma.category.upsert({
+    where: { name: "Fast Food & Meals" },
+    update: {},
+    create: { name: "Fast Food & Meals", icon: "🍔", description: "Burgers, pizzas, fries, and ready meals" },
+  });
+
   const catDairy = await prisma.category.upsert({
     where: { name: "Dairy & Eggs" },
     update: {},
@@ -121,6 +127,12 @@ async function main() {
   });
 
   // 5. Create Brands
+  const brandBeyond = await prisma.brand.upsert({
+    where: { name: "Beyond Meat" },
+    update: {},
+    create: { name: "Beyond Meat", country: "United States", website: "https://beyondmeat.com" },
+  });
+
   const brandSilk = await prisma.brand.upsert({
     where: { name: "Silk" },
     update: {},
@@ -166,8 +178,70 @@ async function main() {
     });
   }
 
-  // 7. Create Products
+  // 7. Create Food Products (Including Burgers, Pizzas, Oats, Almond Milk)
   const products = [
+    {
+      barcode: "085262900403",
+      name: "Beyond Burger Plant-Based Patties",
+      brandId: brandBeyond.id,
+      categoryId: catFastFood.id,
+      image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80",
+      description: "Juicy plant-based burger patty made with pea protein. Soy-free, Gluten-free, and Non-GMO.",
+      ingredients: "Water, Pea Protein, Expeller-Pressed Canola Oil, Refined Coconut Oil, Rice Protein, Natural Flavors, Dried Yeast, Mung Bean Protein, Methylcellulose, Potato Starch, Apple Extract, Pomegranate Fruit Powder, Salt, Potassium Chloride, Vinegar, Lemon Juice Concentrate, Sunflower Lecithin, Beet Juice Extract.",
+      allergens: "Coconut (Tree Nut derivative)",
+      servingSize: "113 g",
+      weight: "226 g",
+      country: "United States",
+      manufacturer: "Beyond Meat Inc.",
+      certifications: JSON.stringify(["Non-GMO Project Verified", "Kosher"]),
+      dietaryLabels: JSON.stringify(["Vegan", "Gluten-Free", "Soy-Free", "High Protein"]),
+      aiSafetyStatus: "SAFE" as const,
+      aiConfidenceScore: 0.99,
+      nutrition: {
+        calories: 230,
+        protein: 20,
+        carbohydrates: 7,
+        sugar: 0,
+        fiber: 2,
+        fat: 14,
+        saturatedFat: 5,
+        transFat: 0,
+        sodium: 390,
+        iron: 4.2,
+        servingSize: "1 patty (113g)",
+      },
+    },
+    {
+      barcode: "042272000449",
+      name: "Amy's Cheese Pizza Whole Wheat Crust",
+      brandId: brandAmys.id,
+      categoryId: catFastFood.id,
+      image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80",
+      description: "Delicious frozen cheese pizza made with organic tomatoes, whole wheat flour, and rBST-free mozzarella cheese.",
+      ingredients: "Organic Whole Wheat Flour, Filtered Water, Organic Tomato Purée, Part-Skim Mozzarella Cheese (Pasteurized Part-Skim Milk, Culture, Salt, Enzymes), Organic Extra Virgin Olive Oil, Sea Salt, Organic Cane Sugar, Yeast, Spices.",
+      allergens: "Milk, Wheat (Gluten)",
+      servingSize: "116 g",
+      weight: "369 g",
+      country: "United States",
+      manufacturer: "Amy's Kitchen",
+      certifications: JSON.stringify(["USDA Organic"]),
+      dietaryLabels: JSON.stringify(["Vegetarian"]),
+      aiSafetyStatus: "UNSAFE" as const,
+      aiConfidenceScore: 0.98,
+      nutrition: {
+        calories: 290,
+        protein: 12,
+        carbohydrates: 36,
+        sugar: 3,
+        fiber: 4,
+        fat: 11,
+        saturatedFat: 4.5,
+        transFat: 0,
+        sodium: 580,
+        calcium: 200,
+        servingSize: "1 slice (116g)",
+      },
+    },
     {
       barcode: "089425000008",
       name: "Silk Pure Almond Milk Unsweetened",
@@ -237,7 +311,7 @@ async function main() {
       barcode: "042272001019",
       name: "Amy's Organic Creamy Tomato Soup",
       brandId: brandAmys.id,
-      categoryId: catSnacks.id,
+      categoryId: catFastFood.id,
       image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=800&q=80",
       description: "Rich, smooth soup made with sun-ripened organic tomatoes and fresh cream.",
       ingredients: "Organic Tomato Purée, Filtered Water, Organic Cream (Milk), Organic Cane Sugar, Sea Salt, Organic Onion Powder.",
@@ -248,7 +322,7 @@ async function main() {
       manufacturer: "Amy's Kitchen Inc.",
       certifications: JSON.stringify(["USDA Organic", "Kosher"]),
       dietaryLabels: JSON.stringify(["Vegetarian", "Gluten-Free"]),
-      aiSafetyStatus: "UNSAFE" as const, // Unsafe for Sarah Connor who has Milk Allergy
+      aiSafetyStatus: "UNSAFE" as const,
       aiConfidenceScore: 0.99,
       nutrition: {
         calories: 140,
@@ -327,9 +401,7 @@ async function main() {
     });
   }
 
-  console.log("✅ AllerScan database successfully seeded!");
-  console.log("👉 Admin Credentials: admin@allerscan.com / AdminPassword123!");
-  console.log("👉 Demo User Credentials: demo@allerscan.com / DemoUser123!");
+  console.log("✅ AllerScan database successfully seeded with Burgers, Pizzas, Oats, Almond Milk, etc.");
 }
 
 main()

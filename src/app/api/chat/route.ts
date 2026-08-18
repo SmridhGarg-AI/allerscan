@@ -13,32 +13,86 @@ export async function POST(req: NextRequest) {
       return apiResponse.error("Message is required", 400);
     }
 
-    let userAllergiesStr = "None specified";
-    let userConditionsStr = "None specified";
+    let userAllergies: string[] = [];
+    let userConditions: string[] = [];
+    let userDiet: string[] = [];
 
     if (currentUser) {
       const userFull = await prisma.user.findUnique({
         where: { id: currentUser.id },
-        include: { allergies: true, medicalConditions: true },
+        include: { allergies: true, medicalConditions: true, dietPreferences: true },
       });
       if (userFull) {
-        userAllergiesStr = userFull.allergies.map((a) => a.allergenName).join(", ") || "None specified";
-        userConditionsStr = userFull.medicalConditions.map((c) => c.conditionName).join(", ") || "None specified";
+        userAllergies = userFull.allergies.map((a) => a.allergenName);
+        userConditions = userFull.medicalConditions.map((c) => c.conditionName);
+        userDiet = userFull.dietPreferences.map((d) => d.preferenceName);
       }
     }
 
-    // Generate intelligent assistant response
-    const msgLower = message.toLowerCase();
-    let replyText = "";
+    const allergiesStr = userAllergies.join(", ") || "None recorded";
+    const conditionsStr = userConditions.join(", ") || "None recorded";
+    const dietStr = userDiet.join(", ") || "None recorded";
 
-    if (msgLower.includes("safe") || msgLower.includes("eat")) {
-      replyText = `Based on your profile (Allergies: ${userAllergiesStr}), AllerScan evaluates products by checking both direct allergens and hidden protein derivatives (like casein or whey for milk allergies). Always check the safety badge on barcode or OCR scans!`;
-    } else if (msgLower.includes("lactose") || msgLower.includes("milk")) {
-      replyText = `Lactose intolerance relates to sugar digestion, whereas a Milk Allergy involves an immune response to milk proteins (casein/whey). For milk allergies, avoid all dairy derivatives. Recommended substitutes include Almond milk, Oat milk, and Soy milk.`;
-    } else if (msgLower.includes("peanuts") || msgLower.includes("nut")) {
-      replyText = `Peanut allergies require strict avoidance of groundnuts, arachis oil, and items labeled 'processed on equipment that processes peanuts'. Carry your EpiPen at all times and check AllerScan's ICE Emergency tab in case of accidental exposure.`;
-    } else {
-      replyText = `Hello! I am your AllerScan AI Health Assistant. I analyze ingredients against your active allergy profile (${userAllergiesStr}) and medical conditions (${userConditionsStr}). How can I help you find safe food options today?`;
+    let replyText = "";
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (apiKey) {
+      try {
+        const promptText = `You are AllerScan AI, a clinical food safety & allergen assistant.
+User Profile:
+- Active Allergies: ${allergiesStr}
+- Medical Conditions: ${conditionsStr}
+- Dietary Preferences: ${dietStr}
+
+User Query: "${message}"
+
+Provide a concise, empathetic, medically sound response (2-4 sentences). Emphasize food safety, potential hidden allergen cross-contamination, and suggest safe alternatives if relevant.`;
+
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+            }),
+          }
+        );
+
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          const candidateText =
+            geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText) {
+            replyText = candidateText.trim();
+          }
+        }
+      } catch (err) {
+        console.error("Gemini API call failed, falling back to clinical rule engine:", err);
+      }
+    }
+
+    // Fallback Clinical Rules Engine if Gemini API key not present or network unavailable
+    if (!replyText) {
+      const q = message.toLowerCase();
+
+      if (q.includes("burger") || q.includes("pizza") || q.includes("fast food")) {
+        const hasMilk = userAllergies.some((a) => a.toLowerCase().includes("milk"));
+        const hasGluten = userAllergies.some((a) => a.toLowerCase().includes("gluten") || a.toLowerCase().includes("wheat"));
+        if (hasMilk || hasGluten) {
+          replyText = `⚠️ Caution for Fast Food (${message}): Traditional burgers and pizzas frequently contain dairy cheese (milk allergy trigger) and wheat flour buns/crusts (gluten trigger). Based on your profile (${allergiesStr}), choose plant-based burgers (like Beyond Burger) on gluten-free buns with vegan dairy-free cheese alternatives.`;
+        } else {
+          replyText = `Burgers and pizzas generally match your recorded profile (${allergiesStr}). However, always check for hidden milk proteins in sauces or cheese marinades before consuming!`;
+        }
+      } else if (q.includes("snack") || q.includes("cookie") || q.includes("chocolate")) {
+        replyText = `When selecting snacks with your profile (${allergiesStr}), inspect labels for whey, casein, or 'processed in a facility that handles peanuts'. Safe choices include certified allergen-free dark chocolate, rice cakes, and dried fruit mixes.`;
+      } else if (q.includes("substitute") || q.includes("replace") || q.includes("alternative")) {
+        replyText = `Great question! For milk allergies, coconut milk or oat milk serve as excellent 1:1 cooking replacements. For gluten intolerance, use almond flour or certified gluten-free oat flour.`;
+      } else if (q.includes("emergency") || q.includes("anaphylaxis") || q.includes("reaction")) {
+        replyText = `🚨 Emergency Alert: If you suspect an acute allergic reaction (swelling, tightness in throat, difficulty breathing), use your epinephrine auto-injector (EpiPen) immediately and tap the red 'ICE Emergency' button at the top right to call 911 and access your digital Medical ID!`;
+      } else {
+        replyText = `I have analyzed your query against your personal profile (Allergies: ${allergiesStr} | Medical: ${conditionsStr} | Diet: ${dietStr}). Always scan food labels using AllerScan's Barcode or OCR camera tool before trying new products to ensure complete safety.`;
+      }
     }
 
     let convId = conversationId;
