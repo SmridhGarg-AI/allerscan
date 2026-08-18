@@ -5,29 +5,52 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MedicalDisclaimer } from "@/components/ui/MedicalDisclaimer";
-import { FileText, Upload, Sparkles, CheckCircle2, AlertTriangle, XCircle, ArrowRight, RefreshCw } from "lucide-react";
+import { FileText, Upload, Sparkles, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Image as ImageIcon } from "lucide-react";
+import { createWorker } from "tesseract.js";
 
 export default function OCRScannerPage() {
-  const [ocrText, setOcrText] = useState(
-    "Ingredients: Organic Tomato Purée, Filtered Water, Organic Cream (Milk), Organic Cane Sugar, Sea Salt, Organic Onion Powder, Processed in a facility that handles Peanuts."
-  );
-  const [confidence, setConfidence] = useState(0.94);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [ocrText, setOcrText] = useState("");
+  const [confidence, setConfidence] = useState<number | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
 
-  const handleExtractOCR = () => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const imageUrl = URL.createObjectURL(file);
+    setSelectedImage(imageUrl);
+    setOcrText("");
+    setConfidence(null);
+    setAiResult(null);
+
+    // Perform real OCR using Tesseract.js
     setIsExtracting(true);
-    setTimeout(() => {
+    try {
+      const worker = await createWorker("eng");
+      const ret = await worker.recognize(file);
+      setOcrText(ret.data.text || "No text detected in image.");
+      setConfidence(ret.data.confidence / 100);
+      await worker.terminate();
+    } catch (err) {
+      console.error("OCR Extraction Error:", err);
+      alert("Failed to read text from image. Please try a clearer photo.");
+    } finally {
       setIsExtracting(false);
-      alert("OCR text extracted with 94% confidence.");
-    }, 1000);
+    }
   };
 
   const handleRunAIAnalysis = async () => {
+    if (!ocrText.trim()) {
+      alert("Please upload an ingredient label image first.");
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
       const res = await fetch("/api/ocr/scan", {
@@ -39,6 +62,8 @@ export default function OCRScannerPage() {
       const data = await res.json();
       if (res.ok && data.data) {
         setAiResult(data.data.analysis);
+      } else {
+        alert(data.error || "Analysis failed.");
       }
     } catch (err) {
       console.error(err);
@@ -60,30 +85,46 @@ export default function OCRScannerPage() {
           <div className="space-y-1">
             <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
               <FileText className="h-7 w-7 text-emerald-400" />
-              <span>OCR Ingredient Label Scanner</span>
+              <span>Real OCR Ingredient Label Scanner</span>
             </h1>
             <p className="text-xs text-slate-400">
-              Photograph or upload any physical food package ingredient label to extract fine text and verify safety.
+              Upload any downloaded food package label or camera photograph to perform real-time text extraction and allergen safety checks.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Image Dropzone & Preview */}
-            <Card className="border-slate-800 bg-slate-900/60 p-6 flex flex-col items-center justify-center text-center space-y-4 min-h-[300px] border-dashed">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <Upload className="h-8 w-8" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-white">Upload Ingredient Label Photo</p>
-                <p className="text-xs text-slate-400">Supports PNG, JPG, WEBP up to 10MB</p>
-              </div>
+            {/* Real File Uploader & Image Preview */}
+            <Card className="border-slate-800 bg-slate-900/60 p-6 flex flex-col items-center justify-center text-center space-y-4 min-h-[300px] border-dashed relative overflow-hidden">
+              {selectedImage ? (
+                <div className="w-full h-full space-y-3">
+                  <div className="relative h-48 w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+                    <img src={selectedImage} alt="Uploaded Label" className="h-full w-full object-contain" />
+                  </div>
+                  <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-700 px-4 py-2 text-xs font-semibold text-white transition-colors">
+                    <Upload className="h-4 w-4" />
+                    <span>Upload Different Label</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  </label>
+                </div>
+              ) : (
+                <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center space-y-3 p-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Upload className="h-8 w-8" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-white">Click or Drag & Drop Label Image</p>
+                    <p className="text-xs text-slate-400">Select any food package ingredient photo (PNG, JPG, WEBP)</p>
+                  </div>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
+              )}
 
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={handleExtractOCR} isLoading={isExtracting}>
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  <span>Simulate Camera Upload</span>
-                </Button>
-              </div>
+              {isExtracting && (
+                <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-2">
+                  <RefreshCw className="h-8 w-8 text-emerald-400 animate-spin" />
+                  <p className="text-xs font-bold text-white">Extracting Text from Image...</p>
+                </div>
+              )}
             </Card>
 
             {/* Extracted Text Editor */}
@@ -92,20 +133,23 @@ export default function OCRScannerPage() {
                 <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Extracted Ingredient Text
                 </label>
-                <Badge variant="safe">
-                  OCR Accuracy: {(confidence * 100).toFixed(0)}%
-                </Badge>
+                {confidence !== null && (
+                  <Badge variant={confidence > 0.7 ? "safe" : "caution"}>
+                    OCR Accuracy: {(confidence * 100).toFixed(0)}%
+                  </Badge>
+                )}
               </div>
 
               <textarea
-                rows={6}
+                rows={7}
+                placeholder="Uploaded label text will appear here automatically..."
                 value={ocrText}
                 onChange={(e) => setOcrText(e.target.value)}
                 className="w-full rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed font-mono resize-none"
               />
 
               <p className="text-[11px] text-slate-400 italic">
-                * You can manually correct any OCR typos in the text area above before running AI analysis.
+                * You can edit or refine any extracted words before submitting to the AI Allergy Engine.
               </p>
 
               <Button
@@ -114,9 +158,10 @@ export default function OCRScannerPage() {
                 className="w-full mt-auto gap-2"
                 onClick={handleRunAIAnalysis}
                 isLoading={isAnalyzing}
+                disabled={!ocrText.trim()}
               >
                 <Sparkles className="h-5 w-5" />
-                <span>Run AI Allergen Analysis</span>
+                <span>Run AI Allergen Safety Analysis</span>
               </Button>
             </Card>
           </div>
@@ -125,10 +170,10 @@ export default function OCRScannerPage() {
 
           {/* AI Analysis Result Output */}
           {aiResult && (
-            <Card className="border-slate-800 bg-slate-900 p-6 space-y-4">
+            <Card className="border-slate-800 bg-slate-900 p-6 space-y-4 shadow-xl">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-emerald-400" />
-                <span>AI Label Analysis Results</span>
+                <span>AI Allergen Risk Analysis</span>
               </h3>
 
               <div className={`rounded-2xl p-4 border flex items-center gap-4 ${
@@ -142,14 +187,14 @@ export default function OCRScannerPage() {
                   <XCircle className="h-8 w-8 shrink-0 text-rose-400" />
                 )}
                 <div>
-                  <h4 className="text-base font-extrabold uppercase">Status: {aiResult.safetyStatus}</h4>
+                  <h4 className="text-base font-extrabold uppercase">Safety Evaluation: {aiResult.safetyStatus}</h4>
                   <p className="text-xs leading-relaxed mt-1">{aiResult.explanation}</p>
                 </div>
               </div>
 
               {aiResult.detectedAllergens?.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-bold text-rose-400">Detected Allergen Triggers:</p>
+                  <p className="text-xs font-bold text-rose-400">Triggered Allergens in Label:</p>
                   <div className="flex flex-wrap gap-2">
                     {aiResult.detectedAllergens.map((alg: any, idx: number) => (
                       <span key={idx} className="rounded-lg bg-rose-500/20 border border-rose-500/40 px-3 py-1 text-xs font-bold text-rose-300">
