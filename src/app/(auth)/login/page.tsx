@@ -33,11 +33,11 @@ export default function LoginPage() {
       }
 
       if (!data.data.user.onboardingCompleted) {
-        router.push("/onboarding");
+        window.location.href = "/onboarding";
       } else if (data.data.user.role === "ADMINISTRATOR") {
-        router.push("/admin");
+        window.location.href = "/admin";
       } else {
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       }
     } catch (err: any) {
       setError(err.message);
