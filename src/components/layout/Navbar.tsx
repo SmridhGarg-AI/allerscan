@@ -1,12 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Shield, Bell, User, LogOut, ShieldAlert, Sparkles, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export function Navbar({ user }: { user?: any }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a")) {
+        e.preventDefault();
+        window.location.href = "/admin";
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });

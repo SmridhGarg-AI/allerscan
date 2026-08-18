@@ -10,8 +10,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("demo@allerscan.com");
-  const [password, setPassword] = useState("DemoUser123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -123,11 +123,7 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              {/* Quick Login Info */}
-              <div className="w-full rounded-xl bg-slate-800/50 p-3 text-[11px] text-slate-400 space-y-1 border border-slate-700/50">
-                <p className="font-bold text-slate-300">Default Login Account:</p>
-                <p>👤 Account: <code className="text-brand-300">demo@allerscan.com</code> / <code className="text-brand-300">DemoUser123!</code></p>
-              </div>
+
             </CardFooter>
           </form>
         </Card>
