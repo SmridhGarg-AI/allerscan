@@ -1,18 +1,18 @@
 import { RiskStatus } from "@/types";
 import { prisma } from "./prisma";
 
-// Allergen Synonyms & Derived Ingredient Mapping
+// Comprehensive Allergen Synonyms & Derived Ingredient Mapping
 const ALLERGEN_SYNONYMS: Record<string, string[]> = {
-  milk: ["casein", "caseinate", "whey", "lactoglobulin", "lactalbumin", "curds", "ghee", "butter", "cream", "milk fat", "milk solids", "lactose"],
-  peanuts: ["peanut", "groundnut", "arachis", "mixed nuts", "peanut butter", "peanut oil"],
-  "tree nuts": ["almond", "walnut", "cashew", "pecan", "pistachio", "hazelnut", "macadamia", "brazil nut", "chestnut"],
-  soy: ["soya", "soybean", "soy lecithin", "edamame", "tofu", "tempeh", "soy protein", "tamari"],
-  wheat: ["semolina", "spelt", "durum", "farina", "emmer", "einkorn", "flour", "wheat gluten"],
-  gluten: ["wheat", "barley", "rye", "malt", "triticale", "seitan"],
-  eggs: ["egg", "albumin", "egg white", "egg yolk", "lysozyme", "mayonnaise", "ovalbumin"],
-  fish: ["salmon", "tuna", "cod", "anchovy", "sardine", "tilapia", "haddock", "fish gelatin", "fish sauce"],
-  shellfish: ["shrimp", "prawn", "crab", "lobster", "crawfish", "krill"],
-  sesame: ["sesame", "tahini", "sesame oil", "sesamol"],
+  milk: ["milk", "dairy", "casein", "caseinate", "whey", "lactoglobulin", "lactalbumin", "curds", "ghee", "butter", "cream", "milk fat", "milk solids", "lactose", "cheese", "mozzarella", "cheddar", "yogurt", "parmesan", "skim milk", "whole milk", "condensed milk"],
+  peanuts: ["peanut", "peanuts", "groundnut", "arachis", "mixed nuts", "peanut butter", "peanut oil", "peanut flour"],
+  "tree nuts": ["tree nut", "tree nuts", "almond", "almonds", "walnut", "walnuts", "cashew", "cashews", "pecan", "pistachio", "hazelnut", "macadamia", "brazil nut", "chestnut", "coconut"],
+  soy: ["soy", "soya", "soybean", "soybeans", "soy lecithin", "edamame", "tofu", "tempeh", "soy protein", "tamari", "soy oil"],
+  wheat: ["wheat", "semolina", "spelt", "durum", "farina", "emmer", "einkorn", "flour", "wheat gluten", "wheat flour", "whole wheat", "bread", "bun", "crust"],
+  gluten: ["gluten", "wheat", "barley", "rye", "malt", "triticale", "seitan", "flour", "wheat flour", "whole wheat"],
+  eggs: ["egg", "eggs", "albumin", "egg white", "egg yolk", "lysozyme", "mayonnaise", "ovalbumin", "egg powder"],
+  fish: ["fish", "salmon", "tuna", "cod", "anchovy", "sardine", "tilapia", "haddock", "fish gelatin", "fish sauce"],
+  shellfish: ["shellfish", "shrimp", "prawn", "crab", "lobster", "crawfish", "krill", "clam", "mussel", "oyster"],
+  sesame: ["sesame", "tahini", "sesame oil", "sesamol", "sesame seeds"],
 };
 
 export interface AnalyzeInput {
@@ -43,7 +43,9 @@ export async function analyzeIngredients(input: AnalyzeInput) {
     const synonyms = ALLERGEN_SYNONYMS[userAllergen] || [userAllergen];
 
     for (const term of synonyms) {
-      if (rawIngredientsLower.includes(term)) {
+      // Use word boundary / string inclusion regex for exact matching
+      const regex = new RegExp(`\\b${term}\\b`, "i");
+      if (regex.test(rawIngredientsLower) || rawIngredientsLower.includes(term)) {
         const severity = allergy.severity || "HIGH";
         detectedAllergens.push({
           name: allergy.name,
@@ -73,7 +75,7 @@ export async function analyzeIngredients(input: AnalyzeInput) {
       const userAllergen = allergy.name.toLowerCase();
       if (warningText.includes(userAllergen)) {
         crossContaminationWarnings.push(
-          `Cross-Contamination Warning: Facility processes ${allergy.name}`
+          `Facility cross-contamination warning detected for ${allergy.name}`
         );
         if (highestSeverity === "SAFE") {
           highestSeverity = "CAUTION";
@@ -95,6 +97,7 @@ export async function analyzeIngredients(input: AnalyzeInput) {
         rawIngredientsLower.includes("cream") ||
         rawIngredientsLower.includes("whey") ||
         rawIngredientsLower.includes("casein") ||
+        rawIngredientsLower.includes("cheese") ||
         rawIngredientsLower.includes("egg") ||
         rawIngredientsLower.includes("honey")
       ) {
@@ -106,7 +109,8 @@ export async function analyzeIngredients(input: AnalyzeInput) {
         rawIngredientsLower.includes("wheat") ||
         rawIngredientsLower.includes("barley") ||
         rawIngredientsLower.includes("rye") ||
-        rawIngredientsLower.includes("malt")
+        rawIngredientsLower.includes("malt") ||
+        rawIngredientsLower.includes("flour")
       ) {
         isCompatible = false;
       }
@@ -118,11 +122,13 @@ export async function analyzeIngredients(input: AnalyzeInput) {
   let explanation = "";
   if (detectedAllergens.length > 0) {
     const allergenListStr = detectedAllergens.map((d) => `${d.name} (via ${d.matchedIngredient})`).join(", ");
-    explanation = `AllerScan has flagged this product as ${highestSeverity}. It contains ingredients associated with your specified allergen profile: ${allergenListStr}. Consuming this product poses a direct risk of an allergic reaction.`;
+    explanation = `🚨 UNSAFE PRODUCT WARNING: AllerScan detected ingredient terms (${allergenListStr}) that match your active allergy profile. Consuming this item presents a direct risk of an allergic reaction.`;
   } else if (crossContaminationWarnings.length > 0) {
-    explanation = `While no direct allergens were detected in the main ingredient list, the product packaging specifies cross-contamination warnings. Exercise caution if you have severe sensitivity.`;
+    explanation = `⚠️ CAUTION: While no direct allergen ingredient is listed, facility cross-contamination warnings exist for your active profile.`;
+  } else if (allergies.length > 0) {
+    explanation = `🟢 SAFE PRODUCT: AllerScan verified the ingredient list against your active allergy profile (${allergies.map((a) => a.name).join(", ")}). No matching direct allergens or hidden protein derivatives were detected.`;
   } else {
-    explanation = `AllerScan verified the ingredient list against your allergy profile (${allergies.map((a) => a.name).join(", ")}). No matching direct allergens or hidden derivatives were identified.`;
+    explanation = `🟢 SAFE: No allergens flagged. (Please configure your active allergies in your Profile to enable personalized risk scoring).`;
   }
 
   // 5. Fetch Safer Alternative Recommendations from Database

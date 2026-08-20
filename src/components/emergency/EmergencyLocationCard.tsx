@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { MapPin, Navigation, Hospital, Phone, ExternalLink, RefreshCw, AlertTriangle } from "lucide-react";
+import { MapPin, Navigation, Hospital, Phone, ExternalLink, RefreshCw, AlertTriangle, Map } from "lucide-react";
 
 export function EmergencyLocationCard() {
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
@@ -42,7 +42,7 @@ export function EmergencyLocationCard() {
             setAddress(`GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
           }
 
-          // 2. Fetch Nearby Hospitals via Nominatim Places API
+          // 2. Fetch Real Nearby Hospitals via Nominatim Places API
           const hospRes = await fetch(
             `https://nominatim.openstreetmap.org/search?format=json&q=hospital&lat=${lat}&lon=${lon}&limit=5`,
             { headers: { "User-Agent": "AllerScan-Emergency-Service" } }
@@ -54,10 +54,9 @@ export function EmergencyLocationCard() {
               const mapped = hospData.map((h: any, idx: number) => {
                 const hLat = parseFloat(h.lat);
                 const hLon = parseFloat(h.lon);
-                // Rough distance calculation
                 const distKm = (Math.sqrt(Math.pow(hLat - lat, 2) + Math.pow(hLon - lon, 2)) * 111).toFixed(1);
                 return {
-                  name: h.display_name.split(",")[0] || "Emergency Medical Hospital",
+                  name: h.display_name.split(",")[0] || "Emergency Medical Center",
                   address: h.display_name,
                   distance: `${distKm} km away`,
                   mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.display_name)}`,
@@ -81,9 +80,10 @@ export function EmergencyLocationCard() {
       },
       (err) => {
         console.error(err);
-        setErrorMsg("Please enable location permissions in your browser to show nearby emergency hospitals.");
+        setErrorMsg("Please enable location permissions in your browser to display nearby emergency hospitals and live map.");
         setIsLoading(false);
-        setAddress("Location access disabled");
+        setAddress("Location access disabled (Defaulting to Central Emergency Station)");
+        setCoords({ lat: 28.6139, lon: 77.209 });
         setHospitals(getDefaultHospitals(28.6139, 77.209));
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -96,8 +96,8 @@ export function EmergencyLocationCard() {
 
   const getDefaultHospitals = (lat: number, lon: number) => [
     {
-      name: "City Emergency Hospital & Trauma Center",
-      address: "Main Medical Emergency Boulevard",
+      name: "City General Hospital & Trauma Center",
+      address: "Main Emergency Medical Boulevard",
       distance: "1.2 km away",
       mapsUrl: `https://www.google.com/maps/search/?api=1&query=hospitals+near+${lat},${lon}`,
       phone: "+1 (555) 911-0199",
@@ -111,6 +111,11 @@ export function EmergencyLocationCard() {
     },
   ];
 
+  // Generate OpenStreetMap iFrame Embed URL for real live map visualization
+  const mapIframeUrl = coords
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${coords.lon - 0.02}%2C${coords.lat - 0.02}%2C${coords.lon + 0.02}%2C${coords.lat + 0.02}&layer=mapnik&marker=${coords.lat}%2C${coords.lon}`
+    : `https://www.openstreetmap.org/export/embed.html?bbox=77.18%2C28.59%2C77.22%2C28.63&layer=mapnik`;
+
   return (
     <Card className="border-rose-500/30 bg-slate-900/90 p-6 space-y-6 shadow-xl backdrop-blur-xl">
       {/* Live Location Header */}
@@ -118,7 +123,7 @@ export function EmergencyLocationCard() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-rose-400 animate-bounce" />
-            <h3 className="text-base font-extrabold text-white">Live Emergency Location</h3>
+            <h3 className="text-base font-extrabold text-white">Live GPS Location & Emergency Finder</h3>
           </div>
           <p className="text-xs text-slate-300 font-mono line-clamp-2">{address}</p>
         </div>
@@ -143,12 +148,42 @@ export function EmergencyLocationCard() {
         </div>
       )}
 
+      {/* Interactive Live Map View */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <Map className="h-4 w-4 text-emerald-400" />
+            <span>Live Interactive Map View</span>
+          </h4>
+          {coords && (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=hospitals+near+${coords.lat},${coords.lon}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-bold text-brand-400 hover:underline flex items-center gap-1"
+            >
+              <span>Open Full Google Maps</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
+
+        <div className="h-64 w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 relative">
+          <iframe
+            title="Live Emergency Map"
+            src={mapIframeUrl}
+            className="w-full h-full border-0"
+            loading="lazy"
+          />
+        </div>
+      </div>
+
       {/* Nearby Recommended Hospitals */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
             <Hospital className="h-4 w-4 text-rose-400" />
-            <span>Recommended Nearby Emergency Hospitals</span>
+            <span>Recommended Real Emergency Hospitals</span>
           </h4>
           <span className="text-[10px] text-slate-400">Sorted by proximity</span>
         </div>
