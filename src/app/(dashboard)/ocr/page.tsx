@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MedicalDisclaimer } from "@/components/ui/MedicalDisclaimer";
+import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
 import { FileText, Upload, Sparkles, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Image as ImageIcon } from "lucide-react";
 import { createWorker } from "tesseract.js";
 
@@ -76,6 +77,7 @@ export default function OCRScannerPage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 pb-20 lg:pb-0">
       <Navbar />
+      <OfflineIndicator />
 
       <div className="flex flex-1">
         <Sidebar />
@@ -85,10 +87,10 @@ export default function OCRScannerPage() {
           <div className="space-y-1">
             <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
               <FileText className="h-7 w-7 text-emerald-400" />
-              <span>Real OCR Ingredient Label Scanner</span>
+              <span>System B: Real OCR Ingredient Label Reader</span>
             </h1>
             <p className="text-xs text-slate-400">
-              Upload any downloaded food package label or camera photograph to perform real-time text extraction and allergen safety checks.
+              Upload any food package label or photograph to extract ingredient text, normalize raw terms, and detect active allergens.
             </p>
           </div>
 

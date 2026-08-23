@@ -9,10 +9,11 @@ import { analyzeIngredients } from "@/lib/ai";
 import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MedicalDisclaimer } from "@/components/ui/MedicalDisclaimer";
+import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -24,6 +25,7 @@ import {
   Heart,
   Share2,
   ChevronLeft,
+  Flag,
 } from "lucide-react";
 
 export default async function ProductDetailPage({
@@ -44,7 +46,7 @@ export default async function ProductDetailPage({
   }
 
   // Evaluate AI safety against user profile
-  let userAllergies: Array<{ name: string; severity?: string }> = [];
+  let userAllergies: Array<{ allergenName: string; severity?: string }> = [];
   let dietPreferences: string[] = [];
 
   if (user) {
@@ -53,7 +55,7 @@ export default async function ProductDetailPage({
       include: { allergies: true, dietPreferences: true },
     });
     if (fullUser) {
-      userAllergies = fullUser.allergies.map((a) => ({ name: a.allergenName, severity: a.severity }));
+      userAllergies = fullUser.allergies.map((a) => ({ allergenName: a.allergenName, severity: a.severity }));
       dietPreferences = fullUser.dietPreferences.map((d) => d.preferenceName);
     }
   }
@@ -67,6 +69,7 @@ export default async function ProductDetailPage({
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 pb-20 lg:pb-0">
       <Navbar user={user} />
+      <OfflineIndicator />
 
       <div className="flex flex-1">
         <Sidebar />
@@ -116,7 +119,7 @@ export default async function ProductDetailPage({
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <Heart className="h-4 w-4 text-rose-500" />
                   <span>Favorite</span>
@@ -125,6 +128,12 @@ export default async function ProductDetailPage({
                   <Share2 className="h-4 w-4" />
                   <span>Share Product</span>
                 </Button>
+                <Link href="/help">
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-slate-400 hover:text-amber-400">
+                    <Flag className="h-4 w-4" />
+                    <span>Report Inaccurate Label</span>
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>

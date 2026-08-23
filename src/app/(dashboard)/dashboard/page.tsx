@@ -7,10 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MedicalDisclaimer } from "@/components/ui/MedicalDisclaimer";
+import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
 import {
   QrCode,
   FileText,
@@ -18,10 +19,12 @@ import {
   Search,
   ShieldAlert,
   Sparkles,
-  Heart,
-  ArrowRight,
   ShieldCheck,
   ChevronRight,
+  Award,
+  AlertOctagon,
+  Flame,
+  CheckCircle2,
 } from "lucide-react";
 
 export default async function DashboardPage() {
@@ -44,6 +47,11 @@ export default async function DashboardPage() {
     }
   }
 
+  // Fetch scan count for achievements calculation
+  const totalUserScans = user
+    ? await prisma.scanHistory.count({ where: { userId: user.id } })
+    : 0;
+
   // Fetch recent products & safe recommendations
   const recentProducts = await prisma.product.findMany({
     take: 4,
@@ -53,11 +61,25 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 pb-20 lg:pb-0">
       <Navbar user={user} />
+      <OfflineIndicator />
 
       <div className="flex flex-1">
         <Sidebar />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+          {/* FDA Food Recall Alert Banner */}
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 p-4 text-xs font-bold text-amber-400">
+            <div className="flex items-center gap-2.5">
+              <AlertOctagon className="h-5 w-5 shrink-0 text-amber-400 animate-pulse" />
+              <span>FDA Recall Alert: Undeclared milk protein in certain organic energy bars. Scan your pantry items before consumption!</span>
+            </div>
+            <Link href="/help">
+              <Button variant="outline" size="sm" className="shrink-0 text-amber-400 border-amber-500/40 hover:bg-amber-500/20">
+                View Details
+              </Button>
+            </Link>
+          </div>
+
           {/* Greeting Hero Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-brand-900/60 via-slate-900 to-slate-900 border border-slate-800 p-6 backdrop-blur-xl shadow-xl">
             <div className="space-y-1">
@@ -91,17 +113,17 @@ export default async function DashboardPage() {
 
           <MedicalDisclaimer compact />
 
-          {/* Quick Actions Grid */}
+          {/* Four Food Checking Systems Quick Access */}
           <div className="space-y-3">
             <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
-              Quick Scan Actions
+              Four Food Checking Systems
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { title: "Barcode Scan", desc: "Camera UPC reader", icon: QrCode, href: "/scanner", color: "text-brand-400 bg-brand-500/10" },
-                { title: "OCR Label", desc: "Extract ingredient text", icon: FileText, href: "/ocr", color: "text-emerald-400 bg-emerald-500/10" },
-                { title: "Vision AI", desc: "Meal photo recognition", icon: Eye, href: "/vision", color: "text-purple-400 bg-purple-500/10" },
-                { title: "Food Search", desc: "Search 5M+ database", icon: Search, href: "/products", color: "text-amber-400 bg-amber-500/10" },
+                { title: "A. Barcode Scanner", desc: "Camera UPC lookup", icon: QrCode, href: "/scanner", color: "text-brand-400 bg-brand-500/10" },
+                { title: "B. Ingredient Reader", desc: "OCR text extraction", icon: FileText, href: "/ocr", color: "text-emerald-400 bg-emerald-500/10" },
+                { title: "C. Identify Food", desc: "Vision AI recognition", icon: Eye, href: "/vision", color: "text-purple-400 bg-purple-500/10" },
+                { title: "D. Manual Entry", desc: "Instant text analysis", icon: Search, href: "/scanner?tab=manual", color: "text-amber-400 bg-amber-500/10" },
               ].map((act, i) => {
                 const Icon = act.icon;
                 return (
@@ -119,9 +141,57 @@ export default async function DashboardPage() {
             </div>
           </div>
 
+          {/* Achievements & Badges */}
+          <div className="space-y-3">
+            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+              <Award className="h-4 w-4 text-amber-400" />
+              <span>User Achievements & Badges</span>
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Card className="p-3 border-slate-800 bg-slate-900/60 flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                  <Flame className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">7-Day Streak</p>
+                  <p className="text-[10px] text-slate-400">Daily Safety Scans</p>
+                </div>
+              </Card>
+
+              <Card className="p-3 border-slate-800 bg-slate-900/60 flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/10 text-brand-400">
+                  <Award className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">{totalUserScans} Scans Completed</p>
+                  <p className="text-[10px] text-slate-400">Verified Ingredients</p>
+                </div>
+              </Card>
+
+              <Card className="p-3 border-slate-800 bg-slate-900/60 flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Profile Verified</p>
+                  <p className="text-[10px] text-slate-400">{allergies.length} Allergens Active</p>
+                </div>
+              </Card>
+
+              <Card className="p-3 border-slate-800 bg-slate-900/60 flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
+                  <ShieldAlert className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">ICE Card Ready</p>
+                  <p className="text-[10px] text-slate-400">QR Medical Badge</p>
+                </div>
+              </Card>
+            </div>
+          </div>
+
           {/* Allergy Summary & Daily Health Tip */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Allergy Summary Card */}
             <Card className="border-slate-800 bg-slate-900/60 p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -154,7 +224,6 @@ export default async function DashboardPage() {
               </div>
             </Card>
 
-            {/* Daily Health Tip */}
             <Card className="border-slate-800 bg-slate-900/60 p-6 space-y-3">
               <div className="flex items-center gap-2 text-emerald-400">
                 <Sparkles className="h-5 w-5" />

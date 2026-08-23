@@ -1,23 +1,17 @@
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { analyzeIngredients } from "@/lib/ai";
+import { analyzeFoodImage, analyzeIngredients } from "@/lib/ai";
 import { apiResponse } from "@/lib/api";
 
 export async function POST(req: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
     const body = await req.json();
+    const { imageBase64 } = body;
 
-    // Mock/Real Vision AI Detection Output
-    const detectedFoods = [
-      { name: "Almond Milk Cappuccino", confidence: 0.95, boundingBox: [20, 30, 200, 200] },
-      { name: "Gluten-Free Oat Cookie", confidence: 0.91, boundingBox: [220, 50, 150, 150] },
-    ];
-
-    const estimatedIngredients = "Espresso, Filtered Water, Almond Milk (Almonds, Water), Oat Flour, Sugar, Palm Oil, Sea Salt.";
-
-    let userAllergies: Array<{ name: string; severity?: string }> = [];
+    let userAllergies: Array<{ allergenName: string; severity?: string }> = [];
+    let allergyNames: string[] = [];
     let dietPreferences: string[] = [];
 
     if (currentUser) {
@@ -30,33 +24,40 @@ export async function POST(req: NextRequest) {
       });
 
       if (userFull) {
-        userAllergies = userFull.allergies.map((a) => ({ name: a.allergenName, severity: a.severity }));
+        userAllergies = userFull.allergies.map((a) => ({ allergenName: a.allergenName, severity: a.severity }));
+        allergyNames = userFull.allergies.map((a) => a.allergenName);
         dietPreferences = userFull.dietPreferences.map((d) => d.preferenceName);
       }
-
-      await prisma.visionScan.create({
-        data: {
-          userId: currentUser.id,
-          imageUrl: "sample_meal.jpg",
-          detectedFoods: JSON.stringify(detectedFoods),
-          estimatedIngredients,
-          nutritionEstimate: JSON.stringify({ calories: 340, protein: 6, carbs: 42, fat: 12 }),
-          confidenceScore: 0.93,
-        },
-      });
     }
 
+    const visionResult = await analyzeFoodImage(imageBase64 || "", allergyNames);
+
+    const estimatedIngredientsStr = visionResult.estimatedIngredients.join(", ");
+
     const aiAnalysis = await analyzeIngredients({
-      ingredients: estimatedIngredients,
+      ingredients: estimatedIngredientsStr,
       allergies: userAllergies,
       dietPreferences,
     });
 
+    if (currentUser) {
+      await prisma.visionScan.create({
+        data: {
+          userId: currentUser.id,
+          imageUrl: imageBase64 ? "data:image/jpeg;base64,..." : "sample_vision.jpg",
+          detectedFoods: JSON.stringify(visionResult.detectedFoods),
+          estimatedIngredients: JSON.stringify(visionResult.estimatedIngredients),
+          nutritionEstimate: JSON.stringify(visionResult.nutritionEstimate),
+          confidenceScore: visionResult.confidenceScore,
+        },
+      });
+    }
+
     return apiResponse.success({
-      detectedFoods,
-      estimatedIngredients,
-      nutritionEstimate: { calories: 340, protein: 6, carbs: 42, fat: 12 },
-      confidenceScore: 0.93,
+      detectedFoods: visionResult.detectedFoods,
+      estimatedIngredients: visionResult.estimatedIngredients,
+      nutritionEstimate: visionResult.nutritionEstimate,
+      confidenceScore: visionResult.confidenceScore,
       analysis: aiAnalysis,
     });
   } catch (error) {

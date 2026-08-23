@@ -8,13 +8,19 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MedicalDisclaimer } from "@/components/ui/MedicalDisclaimer";
-import { Eye, Upload, Sparkles, CheckCircle2, AlertTriangle, XCircle, RefreshCw } from "lucide-react";
+import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
+import { Eye, Upload, Sparkles, CheckCircle2, AlertTriangle, XCircle, RefreshCw, RotateCw, Crop, Sliders } from "lucide-react";
 import { createWorker } from "tesseract.js";
 
 export default function VisionAIPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [visionResult, setVisionResult] = useState<any>(null);
+
+  // Image pre-processing controls
+  const [rotation, setRotation] = useState(0);
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
 
   const handleMealImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -26,14 +32,12 @@ export default function VisionAIPage() {
     setVisionResult(null);
 
     try {
-      // 1. Extract text/labels from uploaded meal photo using real OCR engine
       const worker = await createWorker("eng");
       const ret = await worker.recognize(file);
       await worker.terminate();
 
       const extractedText = ret.data.text || "";
 
-      // 2. Call Vision AI API to process meal & run allergen check against user's profile
       const res = await fetch("/api/vision/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -57,9 +61,23 @@ export default function VisionAIPage() {
     }
   };
 
+  const handlePasteImage = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const fakeEvent = { target: { files: [file] } } as any;
+          handleMealImageUpload(fakeEvent);
+        }
+      }
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 pb-20 lg:pb-0">
+    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 pb-20 lg:pb-0" onPaste={handlePasteImage}>
       <Navbar />
+      <OfflineIndicator />
 
       <div className="flex flex-1">
         <Sidebar />
@@ -69,24 +87,71 @@ export default function VisionAIPage() {
           <div className="space-y-1">
             <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
               <Eye className="h-7 w-7 text-purple-400" />
-              <span>Real Vision AI Meal Scanner</span>
+              <span>System C: Vision AI Meal & Dish Scanner</span>
             </h1>
             <p className="text-xs text-slate-400">
-              Upload any downloaded food photo or camera photograph to detect dishes, estimate ingredients, and run allergen safety checks.
+              Upload, drop, or paste any food image (packaged, restaurant, or homemade) to detect dishes, estimate nutrition, and check allergens.
             </p>
           </div>
 
           <Card className="border-slate-800 bg-slate-900/60 p-6 flex flex-col items-center justify-center text-center space-y-4 min-h-[300px] border-dashed relative overflow-hidden">
             {selectedImage ? (
-              <div className="w-full h-full space-y-3">
-                <div className="relative h-56 w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
-                  <img src={selectedImage} alt="Uploaded Meal" className="h-full w-full object-contain" />
+              <div className="w-full h-full space-y-4">
+                <div className="relative h-64 w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center">
+                  <img
+                    src={selectedImage}
+                    alt="Uploaded Meal"
+                    style={{
+                      transform: `rotate(${rotation}deg)`,
+                      filter: `brightness(${brightness}%) contrast(${contrast}%)`,
+                    }}
+                    className="h-full w-full object-contain transition-all"
+                  />
                 </div>
-                <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-700 px-4 py-2 text-xs font-semibold text-white transition-colors">
-                  <Upload className="h-4 w-4" />
-                  <span>Upload Different Meal Photo</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleMealImageUpload} />
-                </label>
+
+                {/* Pre-processing Control Sliders */}
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-3 rounded-2xl border border-slate-800 text-xs">
+                  <div className="flex items-center gap-2">
+                    <RotateCw className="h-4 w-4 text-purple-400" />
+                    <button
+                      onClick={() => setRotation((prev) => (prev + 90) % 360)}
+                      className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold"
+                    >
+                      Rotate 90°
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Sliders className="h-4 w-4 text-purple-400" />
+                    <span>Brightness ({brightness}%)</span>
+                    <input
+                      type="range"
+                      min="50"
+                      max="150"
+                      value={brightness}
+                      onChange={(e) => setBrightness(Number(e.target.value))}
+                      className="w-24 accent-purple-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span>Contrast ({contrast}%)</span>
+                    <input
+                      type="range"
+                      min="50"
+                      max="150"
+                      value={contrast}
+                      onChange={(e) => setContrast(Number(e.target.value))}
+                      className="w-24 accent-purple-500"
+                    />
+                  </div>
+
+                  <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors">
+                    <Upload className="h-4 w-4" />
+                    <span>Upload Different Photo</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleMealImageUpload} />
+                  </label>
+                </div>
               </div>
             ) : (
               <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center space-y-3 p-4">
@@ -94,8 +159,8 @@ export default function VisionAIPage() {
                   <Upload className="h-8 w-8" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-bold text-white">Click or Drag & Drop Meal Photograph</p>
-                  <p className="text-xs text-slate-400">Select any food image file (PNG, JPG, WEBP)</p>
+                  <p className="text-sm font-bold text-white">Click, Drag & Drop, or Paste Meal Photo (Ctrl+V)</p>
+                  <p className="text-xs text-slate-400">Select any meal photograph (PNG, JPG, WEBP)</p>
                 </div>
                 <input type="file" accept="image/*" className="hidden" onChange={handleMealImageUpload} />
               </label>
@@ -130,14 +195,17 @@ export default function VisionAIPage() {
                       <p className="text-sm font-bold text-white">{food.name}</p>
                       <span className="text-[10px] font-bold text-purple-400">{(food.confidence * 100).toFixed(0)}% match</span>
                     </div>
-                    <p className="text-xs text-slate-400">Region: [{food.boundingBox.join(", ")}]</p>
+                    <p className="text-xs text-slate-400">Category: {food.category}</p>
                   </div>
                 ))}
               </div>
 
               {/* Estimated Macro Nutrition */}
               <div className="space-y-2">
-                <p className="text-xs font-bold text-slate-300">Estimated Meal Nutrition:</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-300">Estimated Meal Nutrition:</p>
+                  <span className="text-[10px] text-amber-400 font-bold">* AI Nutrition Estimates</span>
+                </div>
                 <div className="grid grid-cols-4 gap-2 text-center">
                   <div className="rounded-xl bg-slate-950 p-3 border border-slate-800">
                     <p className="text-lg font-bold text-brand-400">{visionResult.nutritionEstimate?.calories}</p>

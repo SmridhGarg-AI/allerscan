@@ -1,12 +1,17 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiResponse } from "@/lib/api";
+import { getCurrentUser } from "@/lib/auth";
+import { ALLERGEN_SYNONYMS } from "@/lib/ai";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim() || "";
     const category = searchParams.get("category")?.trim() || "";
+    const filterAllergens = searchParams.get("filterAllergens") === "true";
+
+    const currentUser = await getCurrentUser();
 
     const whereClause: any = {
       isApproved: true,
@@ -33,26 +38,26 @@ export async function GET(req: NextRequest) {
     let products = await prisma.product.findMany({
       where: whereClause,
       include: {
-        brand: { select: { name: true, logo: true } },
-        category: { select: { name: true, icon: true } },
+        brand: { select: { id: true, name: true, logo: true } },
+        category: { select: { id: true, name: true, icon: true } },
         nutrition: true,
       },
-      take: 25,
+      take: 30,
     });
 
-    // If query was provided (like "burger") and no direct DB match was found, perform dynamic fallback search
+    // If query provided and no DB match found, use OpenFoodFacts fallback
     if (products.length === 0 && q.length >= 2) {
       try {
         const offRes = await fetch(
           `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(
             q
-          )}&search_simple=1&action=process&json=1&page_size=6`,
+          )}&search_simple=1&action=process&json=1&page_size=8`,
           { headers: { "User-Agent": "AllerScan - AI Food Safety Platform" } }
         );
         if (offRes.ok) {
           const offData = await offRes.json();
           if (offData.products && offData.products.length > 0) {
-            const dynamicProducts = offData.products.slice(0, 6).map((item: any, idx: number) => ({
+            const dynamicProducts = offData.products.slice(0, 8).map((item: any, idx: number) => ({
               id: `off-${item.code || idx}`,
               name: item.product_name || item.product_name_en || `${q.toUpperCase()} Item`,
               barcode: item.code || `890${Date.now()}${idx}`,
@@ -87,6 +92,26 @@ export async function GET(req: NextRequest) {
         }
       } catch (err) {
         console.error("OpenFoodFacts search fallback error:", err);
+      }
+    }
+
+    // Filter out products conflicting with logged in user's allergy profile if requested
+    if (filterAllergens && currentUser) {
+      const userAllergies = await prisma.userAllergy.findMany({
+        where: { userId: currentUser.id },
+      });
+
+      if (userAllergies.length > 0) {
+        const allergenTerms = userAllergies.flatMap(a => {
+          const name = a.allergenName.toLowerCase();
+          return ALLERGEN_SYNONYMS[name] || [name];
+        });
+
+        products = products.filter(p => {
+          const ingLower = p.ingredients.toLowerCase();
+          const containsAllergen = allergenTerms.some(term => ingLower.includes(term));
+          return !containsAllergen;
+        });
       }
     }
 

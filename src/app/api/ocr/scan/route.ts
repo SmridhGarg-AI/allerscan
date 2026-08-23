@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const rawText = extractedText || "Ingredients: Filtered Water, Organic Cream (Milk), Cane Sugar, Sea Salt, Natural Flavors, Processed on equipment that handles Peanuts.";
     const cleanedText = rawText.replace(/\s+/g, " ").trim();
 
-    let userAllergies: Array<{ name: string; severity?: string }> = [];
+    let userAllergies: Array<{ allergenName: string; severity?: string }> = [];
     let dietPreferences: string[] = [];
 
     if (currentUser) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (userFull) {
-        userAllergies = userFull.allergies.map((a) => ({ name: a.allergenName, severity: a.severity }));
+        userAllergies = userFull.allergies.map((a) => ({ allergenName: a.allergenName, severity: a.severity }));
         dietPreferences = userFull.dietPreferences.map((d) => d.preferenceName);
       }
 

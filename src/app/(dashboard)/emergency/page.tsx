@@ -7,9 +7,10 @@ import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
 import { ShieldAlert, Phone, AlertOctagon, QrCode, Heart, User, Hospital } from "lucide-react";
 import { EmergencyLocationCard } from "@/components/emergency/EmergencyLocationCard";
 
@@ -55,9 +56,16 @@ export default async function EmergencyPage() {
     }
   }
 
+  // Generate QR Code URL using QR Server API for digital ICE Medical Card
+  const qrContent = encodeURIComponent(
+    `ICE MEDICAL ID\nName: ${user?.fullName || "Sarah Connor"}\nBlood: ${emergencyData.bloodGroup}\nAllergies: ${emergencyData.allergies.join(", ")}\nDoctor: ${emergencyData.doctorName} (${emergencyData.doctorPhone})\nICE Contact: ${emergencyData.contacts[0]?.name || "ICE"} (${emergencyData.contacts[0]?.phone || "911"})`
+  );
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrContent}`;
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 pb-20 lg:pb-0">
       <Navbar user={user} />
+      <OfflineIndicator />
 
       <div className="flex flex-1">
         <Sidebar />
@@ -71,7 +79,7 @@ export default async function EmergencyPage() {
                 <span>ICE Medical Emergency & Hospital Finder</span>
               </h1>
               <p className="text-xs text-slate-400">
-                Live GPS location tracking, nearby emergency hospitals, & digital Medical ID card.
+                Live GPS location tracking, nearby emergency hospitals, & digital Medical ID card with scannable QR.
               </p>
             </div>
 
@@ -83,7 +91,7 @@ export default async function EmergencyPage() {
             </a>
           </div>
 
-          {/* Anaphylaxis Warning Card */}
+          {/* Anaphylaxis Protocol Card */}
           <Card className="border-rose-500/30 bg-rose-950/40 p-6 space-y-3">
             <div className="flex items-center gap-2 text-rose-400">
               <AlertOctagon className="h-6 w-6 shrink-0" />
@@ -100,21 +108,24 @@ export default async function EmergencyPage() {
           {/* Real Live GPS Location & Nearby Emergency Hospitals */}
           <EmergencyLocationCard />
 
-          {/* Digital Medical ID Card */}
+          {/* Digital Medical ID Card with QR */}
           <Card className="border-slate-800 bg-slate-900/90 p-6 space-y-6 shadow-2xl backdrop-blur-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex flex-col md:flex-row items-center justify-between border-b border-slate-800 pb-6 gap-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/20 text-rose-400 font-extrabold text-lg border border-rose-500/30">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/20 text-rose-400 font-extrabold text-xl border border-rose-500/30">
                   {user?.fullName ? user.fullName[0] : "S"}
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">{user?.fullName || "Sarah Connor"}</h3>
+                  <h3 className="text-xl font-bold text-white">{user?.fullName || "Sarah Connor"}</h3>
                   <p className="text-xs text-slate-400">Blood Group: <strong className="text-rose-400">{emergencyData.bloodGroup}</strong></p>
+                  <Badge variant="unsafe" className="mt-1">EpiPen Auto-Injector Carried</Badge>
                 </div>
               </div>
 
-              <div className="text-right">
-                <Badge variant="unsafe">EpiPen Auto-Injector Carried</Badge>
+              {/* Scannable QR Code */}
+              <div className="flex flex-col items-center p-3 rounded-2xl bg-white text-slate-950 border border-slate-700 shadow-xl">
+                <img src={qrImageUrl} alt="Digital ICE Medical QR Code" className="h-28 w-28 object-contain" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 mt-1">Scan for Digital ICE Card</span>
               </div>
             </div>
 
@@ -148,7 +159,7 @@ export default async function EmergencyPage() {
                   <a href={`tel:${contact.phone}`}>
                     <Button variant="secondary" size="sm" className="gap-1 text-xs">
                       <Phone className="h-3.5 w-3.5" />
-                      <span>Call</span>
+                      <span>Call Contact</span>
                     </Button>
                   </a>
                 </div>

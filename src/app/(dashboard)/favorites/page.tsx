@@ -9,20 +9,39 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
 import { Heart, QrCode } from "lucide-react";
 
 export default async function FavoritesPage() {
   const user = await getCurrentUser();
 
-  const safeProducts = await prisma.product.findMany({
-    where: { aiSafetyStatus: "SAFE" },
-    take: 6,
-    include: { brand: true },
-  });
+  let favoriteProducts: any[] = [];
+  if (user) {
+    const favs = await prisma.favoriteProduct.findMany({
+      where: { userId: user.id },
+      include: {
+        product: {
+          include: { brand: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    favoriteProducts = favs.map((f) => f.product);
+  }
+
+  // Fallback to verified safe products if user has not favorited any yet
+  if (favoriteProducts.length === 0) {
+    favoriteProducts = await prisma.product.findMany({
+      where: { aiSafetyStatus: "SAFE" },
+      take: 6,
+      include: { brand: true },
+    });
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 pb-20 lg:pb-0">
       <Navbar user={user} />
+      <OfflineIndicator />
 
       <div className="flex flex-1">
         <Sidebar />
@@ -34,12 +53,12 @@ export default async function FavoritesPage() {
               <span>Saved Safe Favorites</span>
             </h1>
             <p className="text-xs text-slate-400">
-              Verified safe products bookmarked for quick grocery shopping & reference.
+              Verified safe food products bookmarked for quick grocery shopping & allergen reference.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {safeProducts.map((prod) => (
+            {favoriteProducts.map((prod) => (
               <Link key={prod.id} href={`/products/${prod.id}`}>
                 <Card className="border-slate-800 bg-slate-900/80 p-4 space-y-3 hover:border-brand-500/50 transition-all group">
                   <div className="relative h-36 w-full overflow-hidden rounded-xl bg-slate-800">
@@ -49,7 +68,9 @@ export default async function FavoritesPage() {
                       className="h-full w-full object-cover group-hover:scale-105 transition-transform"
                     />
                     <div className="absolute top-2 right-2">
-                      <Badge variant="safe">SAFE</Badge>
+                      <Badge variant={prod.aiSafetyStatus === "SAFE" ? "safe" : "unsafe"}>
+                        {prod.aiSafetyStatus || "SAFE"}
+                      </Badge>
                     </div>
                   </div>
 

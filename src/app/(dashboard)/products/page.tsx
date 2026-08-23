@@ -8,11 +8,13 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Search, Filter, ChevronRight, QrCode } from "lucide-react";
+import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
+import { Search, Filter, ChevronRight, QrCode, ShieldCheck } from "lucide-react";
 
 export default function ProductSearchPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
+  const [filterAllergens, setFilterAllergens] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -22,6 +24,7 @@ export default function ProductSearchPage() {
       const url = new URL("/api/products/search", window.location.origin);
       if (query) url.searchParams.set("q", query);
       if (category) url.searchParams.set("category", category);
+      if (filterAllergens) url.searchParams.set("filterAllergens", "true");
 
       const res = await fetch(url.toString());
       const data = await res.json();
@@ -40,10 +43,11 @@ export default function ProductSearchPage() {
       fetchProducts();
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, category]);
+  }, [query, category, filterAllergens]);
 
   const categories = [
     { name: "All Foods", value: "" },
+    { name: "🍔 Fast Food & Meals", value: "Fast Food" },
     { name: "🥛 Dairy & Eggs", value: "Dairy" },
     { name: "🍫 Snacks", value: "Snacks" },
     { name: "🍞 Bakery", value: "Bakery" },
@@ -53,6 +57,7 @@ export default function ProductSearchPage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 pb-20 lg:pb-0">
       <Navbar />
+      <OfflineIndicator />
 
       <div className="flex flex-1">
         <Sidebar />
@@ -62,22 +67,36 @@ export default function ProductSearchPage() {
           <div className="space-y-1">
             <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
               <Search className="h-7 w-7 text-brand-400" />
-              <span>Global Food Product Database</span>
+              <span>Searchable Food & Product Database</span>
             </h1>
             <p className="text-xs text-slate-400">
-              Search verified product barcodes, ingredients, nutrition facts, and safety certifications.
+              Search verified product barcodes, ingredients, nutrition facts, and filter results personalized to your allergy profile.
             </p>
           </div>
 
           {/* Search Bar & Category Filter Bar */}
           <div className="space-y-3">
-            <Input
-              placeholder="Search products by name, brand, barcode, or ingredient (e.g. Silk, Almond, Quaker)..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              leftIcon={<Search className="h-4 w-4 text-slate-400" />}
-              className="text-sm h-12"
-            />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Input
+                placeholder="Search products by name, brand, barcode, or ingredient (e.g. Beyond, Silk, Quaker)..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                leftIcon={<Search className="h-4 w-4 text-slate-400" />}
+                className="text-sm h-12 flex-1"
+              />
+
+              <button
+                onClick={() => setFilterAllergens(!filterAllergens)}
+                className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                  filterAllergens
+                    ? "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-md"
+                    : "bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700"
+                }`}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                <span>{filterAllergens ? "Allergy Protection ACTIVE" : "Filter Out My Allergens"}</span>
+              </button>
+            </div>
 
             <div className="flex flex-wrap gap-2">
               {categories.map((cat) => (
@@ -136,8 +155,8 @@ export default function ProductSearchPage() {
           ) : (
             <Card className="p-12 text-center border-slate-800 bg-slate-900/40 space-y-2">
               <Search className="h-10 w-10 text-slate-500 mx-auto" />
-              <p className="text-sm font-bold text-white">No products found matching search query</p>
-              <p className="text-xs text-slate-400">Try searching for "Silk", "Quaker", "Amy's", or "Chocolate"</p>
+              <p className="text-sm font-bold text-white">No safe products found matching search query</p>
+              <p className="text-xs text-slate-400">Try turning off allergen filtering or searching for "Silk", "Quaker", "Beyond"</p>
             </Card>
           )}
         </main>
